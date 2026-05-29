@@ -4,7 +4,7 @@ FastAPI project with PostgreSQL, SQLAlchemy ORM, Alembic migrations, JWT auth, a
 
 ## What is implemented
 
-- 6 tables (`users`, `projects`, `skills`, `project_memberships`, `tasks`, `comments`)
+- 7 tables (`users`, `projects`, `skills`, `project_memberships`, `tasks`, `comments`, `parsed_pages` for lab2 parser)
 - One-to-many relations:
   - `projects -> tasks`
   - `tasks -> comments`
@@ -23,21 +23,29 @@ FastAPI project with PostgreSQL, SQLAlchemy ORM, Alembic migrations, JWT auth, a
 
 ## Start
 
-1. Create and activate virtual environment.
-2. Install dependencies:
+1. Start PostgreSQL (from `students/k3340`):
+
+```bash
+cd ..
+docker compose up -d
+```
+
+2. Create and activate virtual environment.
+3. Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Create `.env` from `.env.example` and set values.
-4. Run migrations:
+4. Create `.env` from `.env.example` (credentials must match Docker: `postgres` / `postgres`).
+
+5. Run migrations:
 
 ```bash
-alembic upgrade head
+PYTHONPATH=. alembic upgrade head
 ```
 
-5. Start app:
+6. Start app:
 
 ```bash
 uvicorn app.main:app --reload

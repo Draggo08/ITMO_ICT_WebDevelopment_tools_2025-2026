@@ -84,3 +84,12 @@ class Comment(Base):
 
     task: Mapped["Task"] = relationship(back_populates="comments")
     author: Mapped["User"] = relationship(back_populates="comments")
+
+
+class ParsedPage(Base):
+    __tablename__ = "parsed_pages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    url: Mapped[str] = mapped_column(String(2048), unique=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    parsed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
