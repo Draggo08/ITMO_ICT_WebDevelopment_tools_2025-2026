@@ -6,3 +6,6 @@ alembic
 pydantic-settings
 python-dotenv
 email-validator
+httpx
+celery
+redis

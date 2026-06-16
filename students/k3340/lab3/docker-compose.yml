@@ -1,0 +1,93 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: k3340_lab3_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: lab1_db
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lab1_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    container_name: k3340_lab3_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  parser:
+    build:
+      context: ..
+      dockerfile: lab3/parser/Dockerfile
+    container_name: k3340_lab3_parser
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/lab1_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+
+  api:
+    build:
+      context: ..
+      dockerfile: lab3/api/Dockerfile
+    container_name: k3340_lab3_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/lab1_db
+      JWT_SECRET_KEY: change_me_in_production
+      JWT_EXPIRE_MINUTES: 60
+      PARSER_URL: http://parser:8001
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      parser:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  celery_worker:
+    build:
+      context: ..
+      dockerfile: lab3/api/Dockerfile
+    container_name: k3340_lab3_celery
+    restart: unless-stopped
+    command: ["celery"]
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/lab1_db
+      JWT_SECRET_KEY: change_me_in_production
+      JWT_EXPIRE_MINUTES: 60
+      PARSER_URL: http://parser:8001
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      parser:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

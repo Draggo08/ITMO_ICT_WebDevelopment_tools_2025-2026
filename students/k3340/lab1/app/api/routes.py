@@ -1,17 +1,25 @@
+import httpx
+from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.celery_app import celery_app
+from app.core.config import settings
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.models import Comment, Project, ProjectMembership, Skill, Task, User
 from app.db.session import get_db
 from app.schemas.entities import (
+    AsyncParseResponse,
+    AsyncParseStatusResponse,
     CommentCreate,
     CommentResponse,
     LoginRequest,
     MembershipCreate,
     MembershipResponse,
+    ParseRequest,
+    ParseResponse,
     PasswordChangeRequest,
     ProjectCreate,
     ProjectResponse,
@@ -23,6 +31,7 @@ from app.schemas.entities import (
     UserCreate,
     UserResponse,
 )
+from app.tasks import parse_url_task
 
 router = APIRouter()
 
@@ -186,3 +195,50 @@ def create_comment(
 @router.get("/tasks/{task_id}/comments", response_model=list[CommentResponse])
 def list_comments(task_id: int, db: Session = Depends(get_db)) -> list[Comment]:
     return list(db.scalars(select(Comment).where(Comment.task_id == task_id).order_by(Comment.id)).all())
+
+
+@router.post("/parse", response_model=ParseResponse)
+def parse_page(payload: ParseRequest) -> ParseResponse:
+    try:
+        response = httpx.post(
+            f"{settings.parser_url}/parse",
+            params={"url": payload.url},
+            timeout=60.0,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Parser service error: {error}",
+        ) from error
+
+    data = response.json()
+    return ParseResponse(message=data["message"], url=data["url"], title=data["title"])
+
+
+@router.post("/parse/async", response_model=AsyncParseResponse, status_code=status.HTTP_202_ACCEPTED)
+def parse_page_async(payload: ParseRequest) -> AsyncParseResponse:
+    task = parse_url_task.delay(payload.url)
+    return AsyncParseResponse(task_id=task.id, status="pending")
+
+
+@router.get("/parse/async/{task_id}", response_model=AsyncParseStatusResponse)
+def parse_page_async_status(task_id: str) -> AsyncParseStatusResponse:
+    result = AsyncResult(task_id, app=celery_app)
+    state = result.state
+
+    if state == "PENDING":
+        return AsyncParseStatusResponse(task_id=task_id, status="pending")
+    if state == "STARTED":
+        return AsyncParseStatusResponse(task_id=task_id, status="started")
+    if state == "FAILURE":
+        return AsyncParseStatusResponse(task_id=task_id, status="failure", error=str(result.result))
+    if state == "SUCCESS":
+        data = result.get()
+        return AsyncParseStatusResponse(
+            task_id=task_id,
+            status="success",
+            result=ParseResponse(message=data["message"], url=data["url"], title=data["title"]),
+        )
+
+    return AsyncParseStatusResponse(task_id=task_id, status=state.lower())

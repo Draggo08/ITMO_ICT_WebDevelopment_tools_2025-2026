@@ -68,3 +68,6 @@ uvicorn app.main:app --reload
 - `GET /api/projects/{project_id}/tasks`
 - `POST /api/tasks/{task_id}/comments`
 - `GET /api/tasks/{task_id}/comments`
+- `POST /api/parse` — синхронный вызов парсера (lab3)
+- `POST /api/parse/async` — постановка задачи в Celery (lab3)
+- `GET /api/parse/async/{task_id}` — статус фоновой задачи (lab3)

@@ -66,10 +66,13 @@ cd ..
 docker compose exec postgres psql -U postgres -d lab1_db -c "SELECT id, url, title FROM parsed_pages;"
 ```
 
-## Lab1 API (опционально)
+## Lab3 — Docker и очереди
+
+См. [lab3/README.md](lab3/README.md).
 
 ```bash
-cd lab1
-uvicorn app.main:app --reload
-# http://127.0.0.1:8000/docs
+cd lab3
+docker compose up -d --build
+# API: http://127.0.0.1:8000/docs
+# Parser: http://127.0.0.1:8001/docs
 ```

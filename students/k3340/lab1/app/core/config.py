@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     database_url: str
     jwt_secret_key: str
     jwt_expire_minutes: int = 60
+    parser_url: str = "http://localhost:8001"
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/0"
 
 
 settings = Settings()

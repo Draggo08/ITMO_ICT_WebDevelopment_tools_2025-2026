@@ -110,3 +110,25 @@ class CommentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ParseRequest(BaseModel):
+    url: str
+
+
+class ParseResponse(BaseModel):
+    message: str
+    url: str
+    title: str
+
+
+class AsyncParseResponse(BaseModel):
+    task_id: str
+    status: str
+
+
+class AsyncParseStatusResponse(BaseModel):
+    task_id: str
+    status: str
+    result: ParseResponse | None = None
+    error: str | None = None
